@@ -1,0 +1,13 @@
+# virtual environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# logs and local configs
+logs/
+*.env
+*.pem
+
+# editor
+.vscode/
