@@ -1,0 +1,76 @@
+version: '3.8'
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    networks:
+      - honeypot-net
+    volumes:
+      - ./mosquitto-main:/mosquitto/config
+    restart: unless-stopped
+
+  mosquitto-honeypot:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto-honeypot
+    ports:
+      - "1884:1883"
+    networks:
+      - honeypot-net
+    volumes:
+      - ./mosquitto-honeypot:/mosquitto/config
+    restart: unless-stopped
+
+  telemetry:
+    build:
+      context: ./telemetry
+    container_name: telemetry
+    networks:
+      - honeypot-net
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  fake-subscriber:
+    build:
+      context: ./telemetry
+    container_name: fake-subscriber
+    networks:
+      - honeypot-net
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  threat-intel:
+    build:
+      context: ./threat-intel
+    container_name: threat-intel
+    networks:
+      - honeypot-net
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: cowrie
+    ports:
+      - "2222:2222"
+      - "23:2223"
+    networks:
+      - honeypot-net
+    volumes:
+      - ./cowrie-data:/cowrie/data
+    restart: unless-stopped
+    environment:
+      - COWRIE_SSH_ENABLED=true
+      - COWRIE_TELNET_ENABLED=true
+
+networks:
+  honeypot-net:
+    driver: bridge

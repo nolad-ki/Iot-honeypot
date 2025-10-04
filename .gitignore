@@ -1,0 +1,41 @@
+# Data directories
+cowrie-data/
+mosquitto-data/
+mosquitto-logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+*.json
+
+# Environment and config files
+.env
+*.env
+*/.env
+
+# Backup files
+*.backup
+*.swp
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.python-version
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+.Dockerfile.swp
+*~
