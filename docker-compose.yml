@@ -1,75 +1,49 @@
 version: '3.8'
 services:
-  mosquitto:
-    image: eclipse-mosquitto:latest
-    container_name: mosquitto
+  http-honeypot:
+    build: ./http-honeypot
+    container_name: http-honeypot
     ports:
-      - "1883:1883"
-      - "9001:9001"
+      - "80:80"
     networks:
       - honeypot-net
-    volumes:
-      - ./mosquitto-main:/mosquitto/config
     restart: unless-stopped
 
-  mosquitto-honeypot:
-    image: eclipse-mosquitto:latest
-    container_name: mosquitto-honeypot
+  ftp-honeypot:
+    build: ./ftp-honeypot
+    container_name: ftp-honeypot
     ports:
-      - "1884:1883"
+      - "21:21"
     networks:
       - honeypot-net
-    volumes:
-      - ./mosquitto-honeypot:/mosquitto/config
     restart: unless-stopped
 
-  telemetry:
-    build:
-      context: ./telemetry
-    container_name: telemetry
+  rdp-honeypot:
+    build: ./rdp-honeypot
+    container_name: rdp-honeypot
+    ports:
+      - "3389:3389"
     networks:
       - honeypot-net
-    depends_on:
-      - mosquitto
     restart: unless-stopped
 
-  fake-subscriber:
-    build:
-      context: ./telemetry
-    container_name: fake-subscriber
+  mysql-honeypot:
+    build: ./mysql-honeypot
+    container_name: mysql-honeypot
+    ports:
+      - "3306:3306"
     networks:
       - honeypot-net
-    depends_on:
-      - mosquitto
     restart: unless-stopped
 
-  threat-intel:
-    build:
-      context: ./threat-intel
-    container_name: threat-intel
-    networks:
-      - honeypot-net
-    environment:
-      - MQTT_HOST=mosquitto
-      - MQTT_PORT=1883
-    depends_on:
-      - mosquitto
-    restart: unless-stopped
-
-  cowrie:
-    image: cowrie/cowrie:latest
-    container_name: cowrie
+  ssh-honeypot:
+    build: ./ssh-honeypot
+    container_name: ssh-honeypot
     ports:
       - "2222:2222"
-      - "23:2223"
     networks:
       - honeypot-net
-    volumes:
-      - ./cowrie-data:/cowrie/data
     restart: unless-stopped
-    environment:
-      - COWRIE_SSH_ENABLED=true
-      - COWRIE_TELNET_ENABLED=true
 
 networks:
   honeypot-net:

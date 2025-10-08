@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     openssh-client \
     telnet \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR $COWRIE_HOME
@@ -19,26 +20,29 @@ WORKDIR $COWRIE_HOME
 # Copy Cowrie files
 COPY cowrie-git/ $COWRIE_HOME/
 
-# Install dependencies directly without building the package
+# First upgrade pip
 RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Cowrie in development mode without version check
-RUN pip install --no-cache-dir -e . --no-build-isolation
+# Install requirements one by one to avoid dependency conflicts
+RUN pip install --no-cache-dir twisted==22.10.0
+RUN pip install --no-cache-dir cryptography==3.4.8
+RUN pip install --no-cache-dir pyopenssl==22.1.0
+RUN pip install --no-cache-dir attrs
+RUN pip install --no-cache-dir service_identity
+RUN pip install --no-cache-dir configparser
+RUN pip install --no-cache-dir python-dateutil
+
+# Try to install cowrie without the problematic dependency resolution
+RUN cd $COWRIE_HOME && python setup.py install
 
 # Create directories
 RUN mkdir -p /cowrie-data
 RUN mkdir -p var/log/cowrie
 
-# Create a simple startup script
-RUN echo '#!/bin/bash\n\
-cd /cowrie\n\
-if [ ! -f "etc/cowrie.cfg" ]; then\n\
-    cp etc/cowrie.cfg.dist etc/cowrie.cfg\n\
-fi\n\
-exec twistd --nodaemon --pidfile= cowrie' > /start-cowrie.sh && \
-    chmod +x /start-cowrie.sh
+# Ensure the configuration file exists
+RUN if [ ! -f "etc/cowrie.cfg" ]; then \
+        cp etc/cowrie.cfg.dist etc/cowrie.cfg; \
+    fi
 
-EXPOSE 2222 2223
-
-CMD ["/start-cowrie.sh"]
+# Use the direct Python approach
+CMD ["python", "src/cowrie/scripts/cowrie.py", "start", "--nodaemon"]

@@ -1,0 +1,81 @@
+version: '3.8'
+services:
+  threat-intel:
+    build: ./threat-intel
+    container_name: threat-intel
+    networks:
+      - default
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+    command: >
+      sh -c "pip install paho-mqtt && 
+             python -c '
+import sys
+import paho.mqtt.client as mqtt
+import json
+import os
+import time
+
+print(\"Starting Threat Intel with MQTT...\")
+sys.path.append(\".\")
+from threat_intel_service import ThreatIntel
+
+def on_connect(client, userdata, flags, rc):
+    print(f\"Connected to MQTT: {rc}\")
+    client.subscribe(\"honeypot/events\")
+    client.subscribe(\"threat/intel\")
+    client.subscribe(\"ips\")
+    client.subscribe(\"cowrie/#\")
+
+def on_message(client, userdata, msg):
+    try:
+        payload = msg.payload.decode()
+        print(f\"Received: {msg.topic}\")
+        
+        ip_address = None
+        if payload.startswith(\"{\"):
+            try:
+                data = json.loads(payload)
+                ip_address = data.get(\"ip\") or data.get(\"ip_address\") or data.get(\"src_ip\")
+                if not ip_address and \"session\" in data:
+                    ip_address = data[\"session\"].get(\"peerIP\")
+            except:
+                pass
+        
+        if not ip_address:
+            parts = payload.strip().split(\".\")
+            if len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts):
+                ip_address = payload.strip()
+        
+        if ip_address:
+            print(f\"Analyzing IP: {ip_address}\")
+            threat_intel = ThreatIntel()
+            result = threat_intel.analyze_ip(ip_address)
+            client.publish(f\"threat/intel/results\", json.dumps(result))
+            print(f\"Published results for {ip_address}\")
+    except Exception as e:
+        print(f\"Error: {e}\")
+
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+
+# Use service name with retry logic
+for i in range(10):
+    try:
+        client.connect(\"mosquitto\", 1883, 60)
+        print(\"MQTT connected successfully\")
+        client.loop_forever()
+        break
+    except Exception as e:
+        print(f\"Connection attempt {i+1} failed: {e}\")
+        time.sleep(2)
+else:
+    print(\"Failed to connect to MQTT after 10 attempts\")
+'"

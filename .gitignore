@@ -21,6 +21,9 @@ mosquitto-logs/
 *.backup
 *.swp
 *.bak
+docker-compose.yml.backup*
+docker-compose.yml.broken
+docker-compose.yml.fixed
 
 # Python
 __pycache__/
@@ -31,10 +34,25 @@ __pycache__/
 env/
 venv/
 .python-version
+honeypot-env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production builds
+dist/
+build/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
 
 # Temporary files
 .Dockerfile.swp
