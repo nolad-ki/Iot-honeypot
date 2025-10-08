@@ -1,122 +1,213 @@
-import React, { useState } from 'react'
-import { Search, Filter, Download, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'
+import honeypotApi from '../services/honeypotApi'
+import './LogAnalysis.css'
 
-const LogAnalysis = ({ attacks }) => {
+const LogAnalysis = () => {
+  const { user, logout } = useAuth()
+  const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedLevel, setSelectedLevel] = useState('all')
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const logLevels = {
-    high: { color: 'text-red-400', bg: 'bg-red-400/10', icon: AlertTriangle },
-    medium: { color: 'text-yellow-400', bg: 'bg-yellow-400/10', icon: Clock },
-    low: { color: 'text-green-400', bg: 'bg-green-400/10', icon: CheckCircle }
+  useEffect(() => {
+    loadLogs()
+  }, [])
+
+  const loadLogs = async () => {
+    try {
+      setLoading(true)
+      const logsData = await honeypotApi.getHoneypotLogs()
+      setLogs(logsData)
+    } catch (error) {
+      console.error('Failed to load logs:', error)
+      // Fallback to mock data
+      setLogs(honeypotApi.getMockLogs())
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const filteredLogs = attacks.filter(log => {
-    const matchesSearch = log.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.source_ip?.includes(searchTerm) ||
-                         log.type?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesLevel = selectedLevel === 'all' || log.severity === selectedLevel
-    return matchesSearch && matchesLevel
+  const filteredLogs = logs.filter(log => {
+    const matchesFilter = filter === 'all' || log.severity === filter
+    const matchesSearch = log.ip.includes(searchTerm) || 
+                         log.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         log.payload.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesFilter && matchesSearch
   })
 
-  const getLogLevel = (log) => {
-    if (log.type?.includes('Brute Force') || log.type?.includes('Critical')) return 'high'
-    if (log.type?.includes('Login') || log.type?.includes('Attempt')) return 'medium'
-    return 'low'
+  const getSeverityIcon = (severity) => {
+    switch (severity) {
+      case 'critical': return 'fas fa-skull-crossbones'
+      case 'high': return 'fas fa-exclamation-triangle'
+      case 'medium': return 'fas fa-exclamation-circle'
+      default: return 'fas fa-info-circle'
+    }
+  }
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'blocked': return '#28a745'
+      case 'monitored': return '#ffc107'
+      default: return '#6c757d'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="log-analysis">
+        <header className="dashboard-header">
+          <div className="header-content">
+            <h1>Log Analysis</h1>
+            <div className="header-actions">
+              <span className="welcome">Welcome, {user?.name}</span>
+              <button onClick={logout} className="logout-btn">
+                <i className="fas fa-sign-out-alt"></i> Logout
+              </button>
+            </div>
+          </div>
+        </header>
+        <div className="log-content">
+          <div style={{textAlign: 'center', padding: '50px'}}>
+            <div className="loading-spinner"></div>
+            <p>Loading attack logs...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <input
-            type="text"
-            placeholder="Search logs..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+    <div className="log-analysis">
+      <header className="dashboard-header">
+        <div className="header-content">
+          <h1>Log Analysis</h1>
+          <div className="header-actions">
+            <span className="welcome">Welcome, {user?.name}</span>
+            <button onClick={logout} className="logout-btn">
+              <i className="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </div>
         </div>
-        
-        <select
-          value={selectedLevel}
-          onChange={(e) => setSelectedLevel(e.target.value)}
-          className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="all">All Levels</option>
-          <option value="high">High Severity</option>
-          <option value="medium">Medium Severity</option>
-          <option value="low">Low Severity</option>
-        </select>
+      </header>
 
-        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-2 transition-colors">
-          <Download className="h-4 w-4" />
-          <span>Export</span>
-        </button>
-      </div>
+      <div className="log-content">
+        {/* Filters and Search */}
+        <div className="log-controls">
+          <div className="search-box">
+            <i className="fas fa-search"></i>
+            <input
+              type="text"
+              placeholder="Search logs by IP, type, or payload..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="filter-buttons">
+            <button 
+              className={filter === 'all' ? 'active' : ''}
+              onClick={() => setFilter('all')}
+            >
+              All Logs
+            </button>
+            <button 
+              className={filter === 'critical' ? 'active' : ''}
+              onClick={() => setFilter('critical')}
+            >
+              Critical
+            </button>
+            <button 
+              className={filter === 'high' ? 'active' : ''}
+              onClick={() => setFilter('high')}
+            >
+              High
+            </button>
+            <button 
+              className={filter === 'medium' ? 'active' : ''}
+              onClick={() => setFilter('medium')}
+            >
+              Medium
+            </button>
+          </div>
+        </div>
 
-      {/* Log List */}
-      <div className="bg-gray-700 rounded-lg border border-gray-600 max-h-96 overflow-y-auto">
-        {filteredLogs.length > 0 ? (
-          filteredLogs.map((log, index) => {
-            const level = getLogLevel(log)
-            const LevelIcon = logLevels[level].icon
-            
-            return (
-              <div
-                key={index}
-                className="p-4 border-b border-gray-600 last:border-b-0 hover:bg-gray-600/50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className={`p-2 rounded-lg ${logLevels[level].bg}`}>
-                      <LevelIcon className={`h-4 w-4 ${logLevels[level].color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-semibold text-white text-sm">{log.type}</span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${logLevels[level].bg} ${logLevels[level].color}`}>
-                          {level.toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="text-gray-300 text-sm mb-1">{log.details}</p>
-                      <div className="flex items-center space-x-4 text-xs text-gray-400">
-                        <span>Source: {log.source_ip}</span>
-                        <span>Service: {log.honeypot}</span>
-                        <span>{new Date(log.timestamp).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })
-        ) : (
-          <div className="p-8 text-center text-gray-400">
-            <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No logs match your current filters</p>
-            <p className="text-sm">Try adjusting your search criteria</p>
-          </div>
-        )}
-      </div>
+        {/* Logs Table */}
+        <div className="logs-table-container">
+          <table className="logs-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>IP Address</th>
+                <th>Type</th>
+                <th>Severity</th>
+                <th>Honeypot</th>
+                <th>Payload</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLogs.map(log => (
+                <tr key={log.id} className={`severity-${log.severity}`}>
+                  <td className="timestamp">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </td>
+                  <td className="ip-address">
+                    <i className="fas fa-desktop"></i>
+                    {log.ip}
+                  </td>
+                  <td className="log-type">{log.type}</td>
+                  <td className="severity">
+                    <i className={getSeverityIcon(log.severity)}></i>
+                    <span>{log.severity}</span>
+                  </td>
+                  <td className="honeypot">
+                    <i className="fas fa-honey-pot"></i>
+                    {log.honeypot}
+                  </td>
+                  <td className="payload" title={log.payload}>
+                    {log.payload.length > 50 ? log.payload.substring(0, 50) + '...' : log.payload}
+                  </td>
+                  <td className="status">
+                    <span style={{ color: getStatusColor(log.status) }}>
+                      {log.status}
+                    </span>
+                  </td>
+                  <td className="actions">
+                    <button className="action-btn view" title="View Details">
+                      <i className="fas fa-eye"></i>
+                    </button>
+                    <button className="action-btn block" title="Block IP">
+                      <i className="fas fa-ban"></i>
+                    </button>
+                    <button className="action-btn export" title="Export">
+                      <i className="fas fa-download"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Summary */}
-      <div className="flex items-center justify-between text-sm text-gray-400">
-        <span>Showing {filteredLogs.length} of {attacks.length} total logs</span>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-            <span>High: {attacks.filter(l => getLogLevel(l) === 'high').length}</span>
+        {/* Statistics */}
+        <div className="log-stats">
+          <div className="stat-item">
+            <div className="stat-value">{logs.length}</div>
+            <div className="stat-label">Total Logs</div>
           </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-            <span>Medium: {attacks.filter(l => getLogLevel(l) === 'medium').length}</span>
+          <div className="stat-item">
+            <div className="stat-value">{logs.filter(l => l.severity === 'critical').length}</div>
+            <div className="stat-label">Critical</div>
           </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span>Low: {attacks.filter(l => getLogLevel(l) === 'low').length}</span>
+          <div className="stat-item">
+            <div className="stat-value">{logs.filter(l => l.severity === 'high').length}</div>
+            <div className="stat-label">High</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-value">{logs.filter(l => l.status === 'blocked').length}</div>
+            <div className="stat-label">Blocked</div>
           </div>
         </div>
       </div>

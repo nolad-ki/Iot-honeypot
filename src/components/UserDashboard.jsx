@@ -1,81 +1,73 @@
-import React, { useState, useEffect } from 'react'
-import { honeypotAPI } from '../lib/honeypot-api'
+import React from 'react'
+import './Dashboard.css'
 
 const UserDashboard = () => {
-  const [stats, setStats] = useState({})
-  const [attacks, setAttacks] = useState([])
-
-  useEffect(() => {
-    const loadData = async () => {
-      const [attacksData, statsData] = await Promise.all([
-        honeypotAPI.getAttacks(),
-        honeypotAPI.getStats()
-      ])
-      setAttacks(attacksData)
-      setStats(statsData)
-    }
-
-    loadData()
-    const interval = setInterval(loadData, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleLogout = () => {
-    localStorage.clear()
-    window.location.href = '/'
-  }
-
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <header className="bg-gray-800 border-b border-gray-700">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">🔍 Security Analyst Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-gray-400">Active Threats</h3>
-            <p className="text-3xl font-bold text-red-400">{stats.attacksToday || 0}</p>
-          </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-gray-400">Honeypots</h3>
-            <p className="text-3xl font-bold text-green-400">{stats.honeypotsActive || 5}</p>
-          </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-gray-400">Threat Level</h3>
-            <p className="text-3xl font-bold text-yellow-400">{stats.threatLevel || 'Low'}</p>
+    <div className="dashboard">
+      <h1>Honeypot Dashboard</h1>
+      
+      <div className="dashboard-grid">
+        {/* Main Card - Honeypot Status */}
+        <div className="balance-card">
+          <div className="card-title">Honeypot Status</div>
+          <div className="balance-amount">Active & Monitoring</div>
+          <div className="card-details">
+            <div>
+              <div className="system-info">All Systems Operational</div>
+              <div className="uptime">Uptime: 99.8%</div>
+            </div>
+            <div>
+              <i className="fas fa-shield-alt"></i>
+            </div>
           </div>
         </div>
 
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Recent Attack Activity</h2>
-          <div className="space-y-3">
-            {attacks.length > 0 ? (
-              attacks.map((attack, index) => (
-                <div key={index} className="bg-gray-700 p-4 rounded">
-                  <div className="flex justify-between">
-                    <span className="font-semibold">{attack.type}</span>
-                    <span className="text-gray-400 text-sm">
-                      {new Date(attack.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-gray-300 text-sm mt-1">{attack.details}</p>
-                  <p className="text-blue-400 text-sm">Source: {attack.source_ip}</p>
-                </div>
-              ))
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                Monitoring for attacks... No activity detected yet.
+        {/* Stats Card */}
+        <div className="stats-card">
+          <div className="card-header">
+            <h3>Attack Statistics</h3>
+            <span className="positive">+12.5%</span>
+          </div>
+          <div className="stats-content">
+            <div className="stat-item">
+              <div className="stat-label">SSH Attacks</div>
+              <div className="stat-value">1,247</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-label">Web Attacks</div>
+              <div className="stat-value">892</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-label">Database Attacks</div>
+              <div className="stat-value">431</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Activity Section */}
+      <div className="activity-section">
+        <div className="card">
+          <div className="card-header">
+            <h3>Recent Activity</h3>
+          </div>
+          <div className="activity-list">
+            <div className="activity-item">
+              <div className="activity-icon ssh">SSH</div>
+              <div className="activity-details">
+                <div className="activity-title">SSH Brute Force Attempt</div>
+                <div className="activity-meta">From: 192.168.1.105 • 2 minutes ago</div>
               </div>
-            )}
+              <div className="activity-status high">High</div>
+            </div>
+            <div className="activity-item">
+              <div className="activity-icon web">WEB</div>
+              <div className="activity-details">
+                <div className="activity-title">SQL Injection Attempt</div>
+                <div className="activity-meta">From: 10.0.2.18 • 5 minutes ago</div>
+              </div>
+              <div className="activity-status critical">Critical</div>
+            </div>
           </div>
         </div>
       </div>
