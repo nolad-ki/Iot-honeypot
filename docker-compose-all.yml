@@ -1,0 +1,67 @@
+version: '3.8'
+services:
+  # Original 5 honeypots
+  ssh-honeypot:
+    build: ./ssh-honeypot
+    container_name: ssh-honeypot
+    ports: ["2222:2222"]
+    networks: [honeypot-net]
+    restart: unless-stopped
+
+  ftp-honeypot:
+    build: ./ftp-honeypot
+    container_name: ftp-honeypot
+    ports: ["21:21"]
+    networks: [honeypot-net]
+    restart: unless-stopped
+
+  http-honeypot:
+    build: ./http-honeypot
+    container_name: http-honeypot
+    ports: ["80:80"]
+    networks: [honeypot-net]
+    restart: unless-stopped
+
+  rdp-honeypot:
+    build: ./rdp-honeypot
+    container_name: rdp-honeypot
+    ports: ["3389:3389"]
+    networks: [honeypot-net]
+    restart: unless-stopped
+
+  mysql-honeypot:
+    build: ./mysql-honeypot
+    container_name: mysql-honeypot
+    ports: ["3306:3306"]
+    networks: [honeypot-net]
+    restart: unless-stopped
+
+  # Cowrie services
+  cowrie:
+    build: ./cowrie/cowrie-git
+    container_name: cowrie
+    ports: ["2223:2222"]
+    networks: [honeypot-net]
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    ports: ["1883:1883"]
+    networks: [honeypot-net]
+    restart: unless-stopped
+
+  threat-intel:
+    build: ./threat-intel
+    container_name: threat-intel
+    networks: [honeypot-net]
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+    depends_on: [mosquitto]
+    restart: unless-stopped
+    command: ["python", "threat_intel_service.py"]
+
+networks:
+  honeypot-net:
+    driver: bridge

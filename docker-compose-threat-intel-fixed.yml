@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  threat-intel:
+    build: ./threat-intel
+    container_name: threat-intel-fixed
+    networks:
+      - default
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+    command: ["python", "threat_intel_service.py"]
